@@ -117,6 +117,7 @@ const UI_TEXT: Record<
     watchAgain: string;
     countdownEyebrow: string;
     exit: string;
+    rotateHint: string;
   }
 > = {
   es: {
@@ -135,6 +136,7 @@ const UI_TEXT: Record<
     watchAgain: "Ver de nuevo",
     countdownEyebrow: "Falta para la fiesta",
     exit: "Salir",
+    rotateHint: "Girá tu celular para pantalla completa",
   },
   en: {
     eyebrowQuestion: "The big question",
@@ -152,6 +154,7 @@ const UI_TEXT: Record<
     watchAgain: "Watch again",
     countdownEyebrow: "Until the big reveal",
     exit: "Exit",
+    rotateHint: "Rotate your phone for full screen",
   },
   // Alemán austríaco: "Bub" en vez de "Junge", "Mädel" en vez de "Mädchen",
   // y giros coloquiales típicos de Austria ("a bisserl", "Auf geht's", "Wart's ab", "nix", "is'").
@@ -171,6 +174,7 @@ const UI_TEXT: Record<
     watchAgain: "Nochmal anschaun",
     countdownEyebrow: "Bis zur Party",
     exit: "Beenden",
+    rotateHint: "Dreh dein Handy fürs Vollbild",
   },
   nl: {
     eyebrowQuestion: "De grote vraag",
@@ -188,6 +192,7 @@ const UI_TEXT: Record<
     watchAgain: "Nog een keer bekijken",
     countdownEyebrow: "Tot het grote moment",
     exit: "Afsluiten",
+    rotateHint: "Draai je telefoon voor volledig scherm",
   },
 };
 
@@ -239,6 +244,74 @@ function formatCountdown(msRemaining: number) {
   const seconds = totalSeconds % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
   return { days, hours, minutes, seconds, pad, isPast: msRemaining <= 0 };
+}
+
+// --- Fullscreen y desbloqueo de audio ---
+// El truco (el mismo que usan Instagram/TikTok): estas funciones se llaman
+// de forma SÍNCRONA, dentro del mismo toque de "Toca para revelar", para que
+// el navegador asocie el permiso de audio/pantalla completa a esta sesión.
+// Así, cuando el video real aparece varios segundos después, ya puede
+// reproducirse con sonido y sin la barra del navegador, sin pedir otro toque.
+
+type FullscreenCapableElement = HTMLElement & {
+  webkitRequestFullscreen?: () => void;
+  webkitEnterFullscreen?: () => void;
+  mozRequestFullScreen?: () => void;
+  msRequestFullscreen?: () => void;
+};
+
+function requestFullscreenSafe(el: HTMLElement | null) {
+  if (!el) return;
+  const anyEl = el as FullscreenCapableElement;
+  try {
+    if (anyEl.requestFullscreen) anyEl.requestFullscreen().catch(() => {});
+    else if (anyEl.webkitRequestFullscreen) anyEl.webkitRequestFullscreen();
+    else if (anyEl.mozRequestFullScreen) anyEl.mozRequestFullScreen();
+    else if (anyEl.msRequestFullscreen) anyEl.msRequestFullscreen();
+  } catch {
+    // Si el navegador no lo permite, seguimos con el layout normal, sin drama.
+  }
+}
+
+type FullscreenCapableDocument = Document & {
+  webkitExitFullscreen?: () => void;
+  webkitFullscreenElement?: Element | null;
+  mozCancelFullScreen?: () => void;
+  msExitFullscreen?: () => void;
+};
+
+function exitFullscreenSafe() {
+  const anyDoc = document as FullscreenCapableDocument;
+  try {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    } else if (anyDoc.webkitFullscreenElement && anyDoc.webkitExitFullscreen) {
+      anyDoc.webkitExitFullscreen();
+    } else if (anyDoc.mozCancelFullScreen) {
+      anyDoc.mozCancelFullScreen();
+    } else if (anyDoc.msExitFullscreen) {
+      anyDoc.msExitFullscreen();
+    }
+  } catch {
+    // no es crítico
+  }
+}
+
+function primeVideoForAutoplay(video: HTMLVideoElement | null) {
+  if (!video) return;
+  video.muted = false;
+  const playPromise = video.play();
+  if (playPromise && typeof playPromise.then === "function") {
+    playPromise
+      .then(() => {
+        video.pause();
+        video.currentTime = 0;
+      })
+      .catch(() => {
+        // Ni siquiera esto lo dejó: no pasa nada, el video igual va a
+        // intentar reproducirse (silenciado si hace falta) más adelante.
+      });
+  }
 }
 
 function playTick(frequency: number) {
@@ -489,7 +562,9 @@ export default function GenderRevealPage() {
   const [videoMuted, setVideoMuted] = useState(false);
   const stepIndex = useRef(0);
   const lastPhaseRef = useRef<FlashPhase | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRefPink = useRef<HTMLVideoElement>(null);
+  const videoRefBlue = useRef<HTMLVideoElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
 
   const selectLanguage = useCallback((l: Lang) => {
     setLang(l);
@@ -594,6 +669,15 @@ export default function GenderRevealPage() {
   );
 
   const start = useCallback(async () => {
+    // Todo esto es SÍNCRONO, en respuesta directa al toque: "activamos" el
+    // audio de los dos videos (no sabemos todavía cuál se va a mostrar) y
+    // pedimos pantalla completa, para que el video real (que aparece recién
+    // después de la montaña rusa) ya pueda reproducirse con sonido y sin
+    // barra del navegador.
+    primeVideoForAutoplay(videoRefPink.current);
+    primeVideoForAutoplay(videoRefBlue.current);
+    requestFullscreenSafe(mainRef.current);
+
     setPhase("loading");
     try {
       const res = await fetch("/api/reveal");
@@ -616,21 +700,23 @@ export default function GenderRevealPage() {
   const toggleSound = useCallback(() => {
     setVideoMuted((m) => {
       const next = !m;
-      if (videoRef.current) {
-        videoRef.current.muted = next;
-        videoRef.current.play().catch(() => {});
+      const video = result === "pink" ? videoRefPink.current : result === "blue" ? videoRefBlue.current : null;
+      if (video) {
+        video.muted = next;
+        video.play().catch(() => {});
       }
       return next;
     });
-  }, []);
+  }, [result]);
 
   const watchAgain = useCallback(() => {
     if (!result) return;
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
+    const video = result === "pink" ? videoRefPink.current : videoRefBlue.current;
+    if (video) {
+      video.pause();
+      video.currentTime = 0;
     }
-    setVideoMuted(true);
+    setVideoMuted(false);
     // Repetimos el mismo resultado que ya se reveló (no volvemos a preguntar
     // a la base de datos): "ver de nuevo" es literalmente eso, no una nueva
     // revelación que podría dar otra respuesta si alguien cambió el admin.
@@ -638,27 +724,31 @@ export default function GenderRevealPage() {
   }, [result, runFlashSequence]);
 
   const exitToWelcome = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
+    const video = result === "pink" ? videoRefPink.current : result === "blue" ? videoRefBlue.current : null;
+    if (video) {
+      video.pause();
+      video.currentTime = 0;
     }
+    exitFullscreenSafe();
     setResult(null);
-    setVideoMuted(true);
+    setVideoMuted(false);
     setCurrentColor(BG_DARK);
     setPhase("welcome");
-  }, []);
+  }, [result]);
 
   const t = UI_TEXT[lang];
   const showVideo = (phase === "revealing" || phase === "revealed") && result;
 
   // Apenas aparece el video, intentamos reproducirlo CON sonido (audio
-  // activado por defecto). Si el navegador bloquea el autoplay con sonido
-  // (política común en iOS/Safari si pasó mucho tiempo desde el último toque),
-  // reintentamos en silencio automáticamente; el botón 🔇/🔊 sigue disponible
-  // para que la persona lo active a mano en ese caso.
+  // activado por defecto). Como ya lo "activamos" al tocar "Toca para
+  // revelar" (ver primeVideoForAutoplay), esto debería andar sin pedir un
+  // toque extra. Si igual el navegador lo bloquea, reintentamos en silencio
+  // automáticamente; el botón 🔇/🔊 sigue disponible para activarlo a mano.
   useEffect(() => {
-    if (!showVideo || !videoRef.current) return;
-    const video = videoRef.current;
+    if (!showVideo || !result) return;
+    const video = result === "pink" ? videoRefPink.current : videoRefBlue.current;
+    if (!video) return;
+    video.currentTime = 0;
     video.muted = videoMuted;
     const playPromise = video.play();
     if (playPromise && typeof playPromise.catch === "function") {
@@ -671,6 +761,21 @@ export default function GenderRevealPage() {
     // Solo cuando el video aparece o cambia de resultado, no en cada toggle de mute.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showVideo, result]);
+
+  // Sugerencia de girar el teléfono: aparece en la montaña rusa y el video
+  // (donde más se nota), y desaparece sola apenas el celular queda en
+  // horizontal.
+  const [isPortrait, setIsPortrait] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(orientation: portrait)");
+    const update = () => setIsPortrait(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+  const showRotateHint =
+    isPortrait && (phase === "flashing" || phase === "revealing" || phase === "revealed");
   const currentLangMeta = LANGUAGES.find((l) => l.code === lang);
   const canChangeLanguage =
     phase === "checking" || phase === "waiting" || phase === "idle" || phase === "loading";
@@ -678,6 +783,7 @@ export default function GenderRevealPage() {
 
   return (
     <motion.main
+      ref={mainRef}
       className="relative h-full w-full flex items-center justify-center overflow-hidden transition-colors duration-150 px-6"
       style={{
         backgroundColor:
@@ -745,18 +851,37 @@ export default function GenderRevealPage() {
         )}
       </AnimatePresence>
 
-      {/* Video de reveal: arranca apenas se sabe el resultado (fase "revealing")
-          y sigue de fondo hasta la pantalla final. Rosa = niña, azul = niño. */}
+      {/* Los dos videos quedan SIEMPRE montados (nunca se desmontan) para no
+          perder el permiso de audio/autoplay que se "activó" al tocar
+          "Toca para revelar". Se muestra uno u otro según el resultado. */}
+      <video
+        ref={videoRefPink}
+        src={VIDEO_SRC.pink}
+        muted={videoMuted}
+        playsInline
+        preload="auto"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          opacity: showVideo && result === "pink" ? 1 : 0,
+          zIndex: showVideo && result === "pink" ? 1 : -1,
+          pointerEvents: "none",
+        }}
+      />
+      <video
+        ref={videoRefBlue}
+        src={VIDEO_SRC.blue}
+        muted={videoMuted}
+        playsInline
+        preload="auto"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          opacity: showVideo && result === "blue" ? 1 : 0,
+          zIndex: showVideo && result === "blue" ? 1 : -1,
+          pointerEvents: "none",
+        }}
+      />
       {showVideo && (
         <>
-          <video
-            ref={videoRef}
-            key={result}
-            src={VIDEO_SRC[result as ResultColor]}
-            muted={videoMuted}
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
           <motion.button
             onClick={toggleSound}
@@ -769,6 +894,30 @@ export default function GenderRevealPage() {
           </motion.button>
         </>
       )}
+
+      {/* Sugerencia de girar el teléfono para pantalla completa real */}
+      <AnimatePresence>
+        {showRotateHint && (
+          <motion.div
+            key="rotate-hint"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-8 left-1/2 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full"
+            style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "white", x: "-50%" }}
+          >
+            <motion.span
+              animate={{ rotate: [0, 90, 90, 0] }}
+              transition={{ duration: 2.4, repeat: Infinity, times: [0, 0.4, 0.8, 1] }}
+              className="text-lg inline-block"
+            >
+              📱
+            </motion.span>
+            <span className="ios-footnote">{t.rotateHint}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
 
       <div className="relative z-10 w-full flex items-center justify-center">
         <AnimatePresence mode="wait">
