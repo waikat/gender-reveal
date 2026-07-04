@@ -56,47 +56,6 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700;1,900&display=swap"
           rel="stylesheet"
         />
-        {/* iOS (sobre todo instalado como PWA) no recalcula bien 100vh/100vw
-            al rotar el teléfono, y a veces la primera medición al cargar
-            todavía no es la definitiva. Medimos con visualViewport (más
-            preciso) y reintentamos varias veces temprano, además de en cada
-            resize/rotación/vuelta de background. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                function getHeight() {
-                  return (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-                }
-                function getWidth() {
-                  return (window.visualViewport && window.visualViewport.width) || window.innerWidth;
-                }
-                function setAppSize() {
-                  document.documentElement.style.setProperty('--app-height', getHeight() + 'px');
-                  document.documentElement.style.setProperty('--app-width', getWidth() + 'px');
-                }
-                setAppSize();
-                [50, 150, 300, 600, 1000, 2000].forEach(function (ms) {
-                  setTimeout(setAppSize, ms);
-                });
-                window.addEventListener('resize', setAppSize);
-                window.addEventListener('orientationchange', function () {
-                  setAppSize();
-                  setTimeout(setAppSize, 100);
-                  setTimeout(setAppSize, 400);
-                  setTimeout(setAppSize, 800);
-                });
-                if (window.visualViewport) {
-                  window.visualViewport.addEventListener('resize', setAppSize);
-                }
-                document.addEventListener('visibilitychange', function () {
-                  if (!document.hidden) setAppSize();
-                });
-                window.addEventListener('pageshow', setAppSize);
-              })();
-            `,
-          }}
-        />
       </head>
       <body>{children}</body>
     </html>

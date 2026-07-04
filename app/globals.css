@@ -19,14 +19,11 @@ body {
   overscroll-behavior: none;
   font-family: var(--font-system);
   background-color: #000000;
-  /* Usamos el alto/ancho real medido por JS (--app-height/--app-width, ver
-     layout.tsx), que se actualiza al rotar el teléfono. 100vh/100vw quedan
-     como respaldo para el primer instante, antes de que corra el script. */
   position: fixed;
   top: 0;
   left: 0;
-  width: var(--app-width, 100vw);
-  height: var(--app-height, 100vh);
+  width: 100dvw;
+  height: 100dvh;
   overflow: hidden;
   overscroll-behavior-y: none;
 }

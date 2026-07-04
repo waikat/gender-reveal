@@ -498,7 +498,6 @@ function LanguagePicker({ onSelect }: { onSelect: (l: Lang) => void }) {
       className="w-full max-w-sm mx-auto max-h-full overflow-y-auto py-4"
     >
       <div className="text-center mb-4">
-        <div className="text-3xl mb-2">🌐</div>
         <h1 className="ios-title-1 text-white mb-1">Choose your language</h1>
         <p className="ios-footnote" style={{ color: "rgba(255,255,255,0.5)" }}>
           Sprache wählen · Elige tu idioma · Kies je taal
