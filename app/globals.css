@@ -16,16 +16,17 @@ html,
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
-  width: 100%;
   overscroll-behavior: none;
   font-family: var(--font-system);
-  /* Clave para que se vea como una app en mobile: fija el documento al
-     viewport real (evita el scroll extra que genera el 100vh de Safari/
-     Chrome al mostrar/ocultar la barra de direcciones, y el "rebote" al
-     arrastrar). */
+  /* Clave para PWA instalada en iOS: con viewport-fit=cover, "height: 100%"
+     hace que Safari ignore el "cover" en silencio y deje un espacio en
+     blanco detrás de la barra de estado. 100vh explícito es lo único que
+     funciona bien desde el arranque en modo standalone. */
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
   overscroll-behavior-y: none;
 }

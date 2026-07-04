@@ -820,8 +820,13 @@ export default function GenderRevealPage() {
         <motion.button
           onClick={() => setPhase("language")}
           whileTap={{ scale: 0.9 }}
-          className="absolute top-5 left-5 z-20 w-11 h-11 rounded-full flex items-center justify-center text-lg"
-          style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "white" }}
+          className="absolute z-20 w-11 h-11 rounded-full flex items-center justify-center text-lg"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.08)",
+            color: "white",
+            top: "max(20px, env(safe-area-inset-top))",
+            left: "max(20px, env(safe-area-inset-left))",
+          }}
           aria-label="Change language"
         >
           {currentLangMeta?.flag}
@@ -837,8 +842,13 @@ export default function GenderRevealPage() {
       {canShowSettings && (
         <Link
           href="/admin"
-          className="absolute top-5 right-5 z-20 w-11 h-11 rounded-full flex items-center justify-center text-lg"
-          style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "white" }}
+          className="absolute z-20 w-11 h-11 rounded-full flex items-center justify-center text-lg"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.08)",
+            color: "white",
+            top: "max(20px, env(safe-area-inset-top))",
+            right: "max(20px, env(safe-area-inset-right))",
+          }}
           aria-label="Admin settings"
         >
           ⚙️
@@ -886,8 +896,13 @@ export default function GenderRevealPage() {
           <motion.button
             onClick={toggleSound}
             whileTap={{ scale: 0.9 }}
-            className="absolute top-5 right-5 z-20 w-11 h-11 rounded-full flex items-center justify-center text-lg"
-            style={{ backgroundColor: "rgba(0,0,0,0.45)", color: "white" }}
+            className="absolute z-20 w-11 h-11 rounded-full flex items-center justify-center text-lg"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.45)",
+              color: "white",
+              top: "max(20px, env(safe-area-inset-top))",
+              right: "max(20px, env(safe-area-inset-right))",
+            }}
             aria-label={videoMuted ? "Activar sonido" : "Silenciar"}
           >
             {videoMuted ? "🔇" : "🔊"}
