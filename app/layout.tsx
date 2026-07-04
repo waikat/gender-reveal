@@ -56,6 +56,28 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700;1,900&display=swap"
           rel="stylesheet"
         />
+        {/* iOS (sobre todo instalado como PWA) no recalcula bien 100vh/100vw
+            al rotar el teléfono. Calculamos el tamaño real con JS, que sí se
+            entera al toque, y se lo pasamos al CSS como variables. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                function setAppSize() {
+                  document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+                  document.documentElement.style.setProperty('--app-width', window.innerWidth + 'px');
+                }
+                setAppSize();
+                window.addEventListener('resize', setAppSize);
+                window.addEventListener('orientationchange', function () {
+                  setAppSize();
+                  setTimeout(setAppSize, 100);
+                  setTimeout(setAppSize, 400);
+                });
+              })();
+            `,
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

@@ -18,15 +18,14 @@ body {
   padding: 0;
   overscroll-behavior: none;
   font-family: var(--font-system);
-  /* Clave para PWA instalada en iOS: con viewport-fit=cover, "height: 100%"
-     hace que Safari ignore el "cover" en silencio y deje un espacio en
-     blanco detrás de la barra de estado. 100vh explícito es lo único que
-     funciona bien desde el arranque en modo standalone. */
+  /* Usamos el alto/ancho real medido por JS (--app-height/--app-width, ver
+     layout.tsx), que se actualiza al rotar el teléfono. 100vh/100vw quedan
+     como respaldo para el primer instante, antes de que corra el script. */
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: var(--app-width, 100vw);
+  height: var(--app-height, 100vh);
   overflow: hidden;
   overscroll-behavior-y: none;
 }
