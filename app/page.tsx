@@ -495,11 +495,11 @@ function LanguagePicker({ onSelect }: { onSelect: (l: Lang) => void }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -40 }}
       transition={{ duration: 0.45, ease: IOS_EASE }}
-      className="w-full max-w-sm mx-auto"
+      className="w-full max-w-sm mx-auto max-h-full overflow-y-auto py-4"
     >
-      <div className="text-center mb-8">
-        <div className="text-4xl mb-3">🌐</div>
-        <h1 className="ios-large-title text-white mb-1">Choose your language</h1>
+      <div className="text-center mb-4">
+        <div className="text-3xl mb-2">🌐</div>
+        <h1 className="ios-title-1 text-white mb-1">Choose your language</h1>
         <p className="ios-footnote" style={{ color: "rgba(255,255,255,0.5)" }}>
           Sprache wählen · Elige tu idioma · Kies je taal
         </p>
@@ -514,7 +514,7 @@ function LanguagePicker({ onSelect }: { onSelect: (l: Lang) => void }) {
             key={l.code}
             onClick={() => handlePick(l.code)}
             whileTap={{ backgroundColor: "rgba(255,255,255,0.06)" }}
-            className="w-full flex items-center justify-between px-4 py-3.5 text-left"
+            className="w-full flex items-center justify-between px-4 py-2.5 text-left"
             style={{
               borderBottom: i < LANGUAGES.length - 1 ? `0.5px solid ${HAIRLINE}` : "none",
             }}
