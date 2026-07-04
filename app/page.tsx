@@ -486,7 +486,7 @@ export default function GenderRevealPage() {
   const [tension, setTension] = useState(false);
   const [bounceDuration, setBounceDuration] = useState(0.9);
   const [screenShake, setScreenShake] = useState(false);
-  const [videoMuted, setVideoMuted] = useState(true);
+  const [videoMuted, setVideoMuted] = useState(false);
   const stepIndex = useRef(0);
   const lastPhaseRef = useRef<FlashPhase | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -650,6 +650,27 @@ export default function GenderRevealPage() {
 
   const t = UI_TEXT[lang];
   const showVideo = (phase === "revealing" || phase === "revealed") && result;
+
+  // Apenas aparece el video, intentamos reproducirlo CON sonido (audio
+  // activado por defecto). Si el navegador bloquea el autoplay con sonido
+  // (política común en iOS/Safari si pasó mucho tiempo desde el último toque),
+  // reintentamos en silencio automáticamente; el botón 🔇/🔊 sigue disponible
+  // para que la persona lo active a mano en ese caso.
+  useEffect(() => {
+    if (!showVideo || !videoRef.current) return;
+    const video = videoRef.current;
+    video.muted = videoMuted;
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {
+        video.muted = true;
+        setVideoMuted(true);
+        video.play().catch(() => {});
+      });
+    }
+    // Solo cuando el video aparece o cambia de resultado, no en cada toggle de mute.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showVideo, result]);
   const currentLangMeta = LANGUAGES.find((l) => l.code === lang);
   const canChangeLanguage =
     phase === "checking" || phase === "waiting" || phase === "idle" || phase === "loading";
@@ -657,7 +678,7 @@ export default function GenderRevealPage() {
 
   return (
     <motion.main
-      className="relative min-h-screen w-full flex items-center justify-center overflow-hidden transition-colors duration-150 px-6"
+      className="relative h-full w-full flex items-center justify-center overflow-hidden transition-colors duration-150 px-6"
       style={{
         backgroundColor:
           phase === "welcome" ||
@@ -732,7 +753,6 @@ export default function GenderRevealPage() {
             ref={videoRef}
             key={result}
             src={VIDEO_SRC[result as ResultColor]}
-            autoPlay
             muted={videoMuted}
             playsInline
             className="absolute inset-0 w-full h-full object-cover"

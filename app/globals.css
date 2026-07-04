@@ -17,8 +17,17 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  width: 100%;
   overscroll-behavior: none;
   font-family: var(--font-system);
+  /* Clave para que se vea como una app en mobile: fija el documento al
+     viewport real (evita el scroll extra que genera el 100vh de Safari/
+     Chrome al mostrar/ocultar la barra de direcciones, y el "rebote" al
+     arrastrar). */
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior-y: none;
 }
 
 /* Escala tipográfica estilo iOS (Human Interface Guidelines) */

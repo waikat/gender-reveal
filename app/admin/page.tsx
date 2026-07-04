@@ -157,7 +157,7 @@ export default function AdminPage() {
   if (!authed) {
     return (
       <main
-        className="min-h-screen w-full flex items-center justify-center px-6"
+        className="h-full w-full flex items-center justify-center px-6"
         style={{ backgroundColor: BG_DARK }}
       >
         <motion.form
@@ -208,7 +208,7 @@ export default function AdminPage() {
 
   return (
     <main
-      className="min-h-screen w-full flex items-center justify-center px-6 py-10"
+      className="h-full w-full flex items-center justify-center px-6 py-10 overflow-y-auto"
       style={{ backgroundColor: BG_DARK }}
     >
       <motion.div
