@@ -57,23 +57,42 @@ export default function RootLayout({
           rel="stylesheet"
         />
         {/* iOS (sobre todo instalado como PWA) no recalcula bien 100vh/100vw
-            al rotar el teléfono. Calculamos el tamaño real con JS, que sí se
-            entera al toque, y se lo pasamos al CSS como variables. */}
+            al rotar el teléfono, y a veces la primera medición al cargar
+            todavía no es la definitiva. Medimos con visualViewport (más
+            preciso) y reintentamos varias veces temprano, además de en cada
+            resize/rotación/vuelta de background. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function () {
+                function getHeight() {
+                  return (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+                }
+                function getWidth() {
+                  return (window.visualViewport && window.visualViewport.width) || window.innerWidth;
+                }
                 function setAppSize() {
-                  document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
-                  document.documentElement.style.setProperty('--app-width', window.innerWidth + 'px');
+                  document.documentElement.style.setProperty('--app-height', getHeight() + 'px');
+                  document.documentElement.style.setProperty('--app-width', getWidth() + 'px');
                 }
                 setAppSize();
+                [50, 150, 300, 600, 1000, 2000].forEach(function (ms) {
+                  setTimeout(setAppSize, ms);
+                });
                 window.addEventListener('resize', setAppSize);
                 window.addEventListener('orientationchange', function () {
                   setAppSize();
                   setTimeout(setAppSize, 100);
                   setTimeout(setAppSize, 400);
+                  setTimeout(setAppSize, 800);
                 });
+                if (window.visualViewport) {
+                  window.visualViewport.addEventListener('resize', setAppSize);
+                }
+                document.addEventListener('visibilitychange', function () {
+                  if (!document.hidden) setAppSize();
+                });
+                window.addEventListener('pageshow', setAppSize);
               })();
             `,
           }}
