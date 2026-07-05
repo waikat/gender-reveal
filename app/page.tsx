@@ -314,6 +314,34 @@ function primeVideoForAutoplay(video: HTMLVideoElement | null) {
   }
 }
 
+// Fanfarria cortita al momento del confetti: un arpegio ascendente alegre,
+// como un "ta-dá". No es un aplauso grabado (no tenemos ese archivo), pero
+// da la sensación festiva de "ruido" en el momento del reveal.
+function playCheerSound() {
+  try {
+    const ctx = new (window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // Do-Mi-Sol-Do (mayor, alegre)
+    notes.forEach((freq, i) => {
+      const start = ctx.currentTime + i * 0.09;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.type = "triangle";
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.13, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.55);
+    });
+  } catch {
+    // si el navegador bloquea audio, no pasa nada, el confetti sigue solo
+  }
+}
+
 function playTick(frequency: number) {
   try {
     const ctx = new (window.AudioContext ||
@@ -334,11 +362,11 @@ function playTick(frequency: number) {
   }
 }
 
-function fireConfetti(color: ResultColor) {
+function fireConfetti(color: ResultColor, shoot: ReturnType<typeof confetti.create>) {
   const base = color === "pink" ? [PINK, PINK_SOFT, "#FFB6D9"] : [BLUE, BLUE_SOFT, "#8ECBFF"];
   const palette = [...base, "#FFD166", "#FFFFFF"];
 
-  confetti({
+  shoot({
     particleCount: 220,
     spread: 130,
     startVelocity: 55,
@@ -349,10 +377,10 @@ function fireConfetti(color: ResultColor) {
     ticks: 250,
   });
 
-  const shoot = (angle: number, originX: number, delay: number) =>
+  const shootAngled = (angle: number, originX: number, delay: number) =>
     setTimeout(
       () =>
-        confetti({
+        shoot({
           particleCount: 110,
           angle,
           spread: 70,
@@ -365,14 +393,14 @@ function fireConfetti(color: ResultColor) {
         }),
       delay
     );
-  shoot(55, 0.05, 100);
-  shoot(125, 0.95, 100);
-  shoot(60, 0.15, 350);
-  shoot(120, 0.85, 350);
+  shootAngled(55, 0.05, 100);
+  shootAngled(125, 0.95, 100);
+  shootAngled(60, 0.15, 350);
+  shootAngled(120, 0.85, 350);
 
   setTimeout(
     () =>
-      confetti({
+      shoot({
         particleCount: 180,
         spread: 160,
         startVelocity: 30,
@@ -387,7 +415,7 @@ function fireConfetti(color: ResultColor) {
 
   setTimeout(
     () =>
-      confetti({
+      shoot({
         particleCount: 150,
         spread: 100,
         startVelocity: 40,
@@ -564,6 +592,8 @@ export default function GenderRevealPage() {
   const videoRefPink = useRef<HTMLVideoElement>(null);
   const videoRefBlue = useRef<HTMLVideoElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+  const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
+  const confettiInstanceRef = useRef<ReturnType<typeof confetti.create> | null>(null);
 
   const selectLanguage = useCallback((l: Lang) => {
     setLang(l);
@@ -598,6 +628,19 @@ export default function GenderRevealPage() {
     return () => clearInterval(interval);
   }, [phase, checkStatus]);
 
+  // Creamos la instancia de confetti enlazada a NUESTRO canvas (adentro del
+  // contenedor que pide pantalla completa), en vez de dejar que la librería
+  // agregue el suyo afuera, directo al <body> — si no, cuando el navegador
+  // entra en pantalla completa real, ese canvas externo queda fuera del
+  // árbol que se renderiza y el confetti no se ve.
+  useEffect(() => {
+    if (!confettiCanvasRef.current) return;
+    confettiInstanceRef.current = confetti.create(confettiCanvasRef.current, {
+      resize: true,
+      useWorker: true,
+    });
+  }, []);
+
   // Si hay una fecha de countdown configurada, actualizamos el reloj cada
   // segundo, y apenas llega a cero, revisamos el estado al instante (sin
   // esperar el poll de 4s) para desbloquear el botón justo en el momento.
@@ -624,7 +667,8 @@ export default function GenderRevealPage() {
     setPhase("revealing");
     setTimeout(() => {
       setPhase("revealed");
-      fireConfetti(finalColor);
+      fireConfetti(finalColor, confettiInstanceRef.current || (confetti as unknown as ReturnType<typeof confetti.create>));
+      playCheerSound();
       setScreenShake(true);
       setTimeout(() => setScreenShake(false), 350);
     }, VIDEO_LEAD_MS);
@@ -837,6 +881,14 @@ export default function GenderRevealPage() {
           </span>
         </motion.button>
       )}
+
+      {/* Canvas propio para el confetti, adentro del contenedor que pide
+          pantalla completa (ver comentario en el useEffect que lo inicializa). */}
+      <canvas
+        ref={confettiCanvasRef}
+        className="absolute inset-0 pointer-events-none z-30"
+        style={{ width: "100%", height: "100%" }}
+      />
 
       {canShowSettings && (
         <Link
