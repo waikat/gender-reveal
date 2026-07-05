@@ -94,7 +94,7 @@ PHASES.forEach((p) =>
 
 const LANGUAGES: { code: Lang; flag: string; name: string; native: string }[] = [
   { code: "en", flag: "🇬🇧", name: "English", native: "English" },
-  { code: "de", flag: "🇦🇹", name: "German (Austria)", native: "Österreichisch" },
+  { code: "de", flag: "🇦🇹", name: "German (Vienna)", native: "Wienerisch" },
   { code: "es", flag: "🇪🇸", name: "Spanish", native: "Español" },
   { code: "nl", flag: "🇳🇱", name: "Dutch", native: "Nederlands" },
 ];
@@ -156,25 +156,26 @@ const UI_TEXT: Record<
     exit: "Exit",
     rotateHint: "Rotate your phone for full screen",
   },
-  // Alemán austríaco: "Bub" en vez de "Junge", "Mädel" en vez de "Mädchen",
-  // y giros coloquiales típicos de Austria ("a bisserl", "Auf geht's", "Wart's ab", "nix", "is'").
+  // Wienerisch (dialecto de Viena): "Oida", "gemma", "amoi", "leiwand",
+  // "Madl"/"Bua" en vez de "Mädchen"/"Junge", vocales típicas vienesas
+  // ("scho" por "schon", "ned" por "nicht", "a" por "ein").
   de: {
-    eyebrowQuestion: "Die große Frage",
-    title: "Bub oder Mädel?",
-    button: "Zum Aufdecken tippen",
-    loading: "Lädt...",
-    errorText: "Etwas ist schiefgelaufen. Probier's nochmal.",
-    retry: "Nochmal probieren",
+    eyebrowQuestion: "De große Frog",
+    title: "Bua oder Madl?",
+    button: "Drück zum Aufdecken",
+    loading: "Lod...",
+    errorText: "Da ist wos schiefgangen. Probier's nochamoi.",
+    retry: "Nochamoi probieren",
     revealEyebrow: "Es wird a...",
-    girl: "Mädel! 💗",
-    boy: "Bub! 💙",
-    waitingTitle: "Bald wissen mia's 👀",
-    waitingSubtitle: "Die Seite aktualisiert sich von selbst.",
-    checking: "Schauen, ob's schon so weit is...",
-    watchAgain: "Nochmal anschaun",
-    countdownEyebrow: "Bis zur Party",
-    exit: "Beenden",
-    rotateHint: "Dreh dein Handy fürs Vollbild",
+    girl: "Madl! 💗",
+    boy: "Bua! 💙",
+    waitingTitle: "Oida, no is' a Geheimnis 🤫",
+    waitingSubtitle: "Des aktualisiert si vo selber.",
+    checking: "Schau ma amoi, ob's scho so weit is...",
+    watchAgain: "Nochamoi ozamm",
+    countdownEyebrow: "Bis zum Fest",
+    exit: "Aussi",
+    rotateHint: "Dreh dei Handy fürs Vollbild",
   },
   nl: {
     eyebrowQuestion: "De grote vraag",
@@ -217,12 +218,12 @@ const PHASE_TEXT_I18N: Record<Lang, Record<FlashPhase, string>> = {
   },
   de: {
     climb1: "Gleich is' so weit...",
-    drop1: "Auf geht's...",
-    climb2: "Nur noch a bisserl...",
-    loop: "Auf geht's, auf geht's!",
-    pause: "Wart's ab...",
-    falsealarm: "Jetzt schon?",
-    final: "Jetzt kummt's!",
+    drop1: "Auf geht's, gemma!",
+    climb2: "Nur a klanes Bisserl...",
+    loop: "Gemma, gemma!",
+    pause: "Wart's amoi...",
+    falsealarm: "Jetzt scho?",
+    final: "Jetzt kummt's, Oida!",
   },
   nl: {
     climb1: "Bijna zover...",
@@ -403,7 +404,7 @@ function fireConfetti(color: ResultColor) {
 // Frase "Niño o niña" en cada idioma, para la pantalla de bienvenida.
 const WELCOME_PHRASES: { lang: Lang; text: string }[] = [
   { lang: "en", text: "Boy or girl?" },
-  { lang: "de", text: "Bub oder Mädel?" },
+  { lang: "de", text: "Bua oder Madl?" },
   { lang: "es", text: "¿Niño o niña?" },
   { lang: "nl", text: "Jongen of meisje?" },
 ];
@@ -837,6 +838,18 @@ export default function GenderRevealPage() {
           </span>
         </motion.button>
       )}
+
+      {/* Fundido a negro en el borde inferior: disimula a propósito la zona
+          que iOS reserva para el home indicator en apps instaladas (que
+          siempre pinta negro ahí y no se puede evitar), para que se vea
+          como una decisión de diseño en vez de un corte raro. */}
+      <div
+        className="absolute bottom-0 left-0 right-0 pointer-events-none z-40"
+        style={{
+          height: "calc(env(safe-area-inset-bottom, 0px) + 56px)",
+          background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.9) 55%, #000000 100%)",
+        }}
+      />
 
       {canShowSettings && (
         <Link
