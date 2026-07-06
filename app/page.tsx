@@ -320,11 +320,36 @@ function primeVideoForAutoplay(video: HTMLVideoElement | null) {
 // Fanfarria cortita al momento del confetti: un arpegio ascendente alegre,
 // como un "ta-dá". No es un aplauso grabado (no tenemos ese archivo), pero
 // da la sensación festiva de "ruido" en el momento del reveal.
+// AudioContext ÚNICO y compartido para todos los sonidos de la app (en vez
+// de crear uno nuevo por cada tick, que en iOS puede arrancar "suspendido"
+// si no está bien ligado al toque original). Se activa explícitamente en
+// el mismo toque de "Toca para revelar" (ver ensureAudioContext).
+let sharedAudioContext: AudioContext | null = null;
+
+function getAudioContextClass(): typeof AudioContext | null {
+  return (
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ||
+    null
+  );
+}
+
+function ensureAudioContext(): AudioContext | null {
+  const AudioContextClass = getAudioContextClass();
+  if (!AudioContextClass) return null;
+  if (!sharedAudioContext) {
+    sharedAudioContext = new AudioContextClass();
+  }
+  if (sharedAudioContext.state === "suspended") {
+    sharedAudioContext.resume().catch(() => {});
+  }
+  return sharedAudioContext;
+}
+
 function playCheerSound() {
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
   try {
-    const ctx = new (window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext)();
     const notes = [523.25, 659.25, 783.99, 1046.5]; // Do-Mi-Sol-Do (mayor, alegre)
     notes.forEach((freq, i) => {
       const start = ctx.currentTime + i * 0.09;
@@ -346,10 +371,9 @@ function playCheerSound() {
 }
 
 function playTick(frequency: number) {
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
   try {
-    const ctx = new (window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = frequency;
@@ -715,11 +739,10 @@ export default function GenderRevealPage() {
   );
 
   const start = useCallback(async () => {
-    // Todo esto es SÍNCRONO, en respuesta directa al toque: "activamos" el
-    // audio de los dos videos (no sabemos todavía cuál se va a mostrar) y
-    // pedimos pantalla completa, para que el video real (que aparece recién
-    // después de la montaña rusa) ya pueda reproducirse con sonido y sin
-    // barra del navegador.
+    // Todo esto es SÍNCRONO, en respuesta directa al toque: activamos el
+    // AudioContext compartido (para el taca-taca y la fanfarria), "activamos"
+    // el audio de los dos videos, y pedimos pantalla completa.
+    ensureAudioContext();
     primeVideoForAutoplay(videoRefPink.current);
     primeVideoForAutoplay(videoRefBlue.current);
     requestFullscreenSafe(mainRef.current);
