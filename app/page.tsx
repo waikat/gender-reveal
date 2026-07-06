@@ -117,7 +117,6 @@ const UI_TEXT: Record<
     watchAgain: string;
     countdownEyebrow: string;
     exit: string;
-    rotateHint: string;
   }
 > = {
   es: {
@@ -136,7 +135,6 @@ const UI_TEXT: Record<
     watchAgain: "Ver de nuevo",
     countdownEyebrow: "Falta para la fiesta",
     exit: "Salir",
-    rotateHint: "Girá tu celular para pantalla completa",
   },
   en: {
     eyebrowQuestion: "The big question",
@@ -154,7 +152,6 @@ const UI_TEXT: Record<
     watchAgain: "Watch again",
     countdownEyebrow: "Until the big reveal",
     exit: "Exit",
-    rotateHint: "Rotate your phone for full screen",
   },
   // Alemán austríaco: "Bub" en vez de "Junge", "Mädel" en vez de "Mädchen",
   // y giros coloquiales típicos de Austria ("a bisserl", "Auf geht's", "Wart's ab", "nix", "is'").
@@ -174,7 +171,6 @@ const UI_TEXT: Record<
     watchAgain: "Nochmal anschaun",
     countdownEyebrow: "Bis zur Party",
     exit: "Beenden",
-    rotateHint: "Dreh dein Handy fürs Vollbild",
   },
   nl: {
     eyebrowQuestion: "De grote vraag",
@@ -192,7 +188,6 @@ const UI_TEXT: Record<
     watchAgain: "Nog een keer bekijken",
     countdownEyebrow: "Tot het grote moment",
     exit: "Afsluiten",
-    rotateHint: "Draai je telefoon voor volledig scherm",
   },
 };
 
@@ -300,12 +295,20 @@ function exitFullscreenSafe() {
 function primeVideoForAutoplay(video: HTMLVideoElement | null) {
   if (!video) return;
   video.muted = false;
+  // Ojo: reproducimos con volume=0 (no muted=true) durante la "activación".
+  // Para las políticas de autoplay del navegador esto sigue contando como
+  // "reproducción con sonido permitida" (lo que necesitamos desbloquear),
+  // pero no se escucha nada mientras tanto — así no pisa el taca-taca-taca
+  // de la montaña rusa. El volumen real se restaura recién cuando el video
+  // de verdad arranca (ver el useEffect de showVideo).
+  video.volume = 0;
   const playPromise = video.play();
   if (playPromise && typeof playPromise.then === "function") {
     playPromise
       .then(() => {
         video.pause();
         video.currentTime = 0;
+        video.volume = 1;
       })
       .catch(() => {
         // Ni siquiera esto lo dejó: no pasa nada, el video igual va a
@@ -745,6 +748,7 @@ export default function GenderRevealPage() {
       const next = !m;
       const video = result === "pink" ? videoRefPink.current : result === "blue" ? videoRefBlue.current : null;
       if (video) {
+        video.volume = 1;
         video.muted = next;
         video.play().catch(() => {});
       }
@@ -792,6 +796,7 @@ export default function GenderRevealPage() {
     const video = result === "pink" ? videoRefPink.current : videoRefBlue.current;
     if (!video) return;
     video.currentTime = 0;
+    video.volume = 1;
     video.muted = videoMuted;
     const playPromise = video.play();
     if (playPromise && typeof playPromise.catch === "function") {
@@ -805,20 +810,6 @@ export default function GenderRevealPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showVideo, result]);
 
-  // Sugerencia de girar el teléfono: aparece en la montaña rusa y el video
-  // (donde más se nota), y desaparece sola apenas el celular queda en
-  // horizontal.
-  const [isPortrait, setIsPortrait] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(orientation: portrait)");
-    const update = () => setIsPortrait(mq.matches);
-    update();
-    mq.addEventListener?.("change", update);
-    return () => mq.removeEventListener?.("change", update);
-  }, []);
-  const showRotateHint =
-    isPortrait && (phase === "flashing" || phase === "revealing" || phase === "revealed");
   const currentLangMeta = LANGUAGES.find((l) => l.code === lang);
   const canChangeLanguage =
     phase === "checking" || phase === "waiting" || phase === "idle" || phase === "loading";
@@ -960,29 +951,6 @@ export default function GenderRevealPage() {
           </motion.button>
         </>
       )}
-
-      {/* Sugerencia de girar el teléfono para pantalla completa real */}
-      <AnimatePresence>
-        {showRotateHint && (
-          <motion.div
-            key="rotate-hint"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-8 left-1/2 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full"
-            style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "white", x: "-50%" }}
-          >
-            <motion.span
-              animate={{ rotate: [0, 90, 90, 0] }}
-              transition={{ duration: 2.4, repeat: Infinity, times: [0, 0.4, 0.8, 1] }}
-              className="text-lg inline-block"
-            >
-              📱
-            </motion.span>
-            <span className="ios-footnote">{t.rotateHint}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
 
       <div className="relative z-10 w-full flex items-center justify-center">
